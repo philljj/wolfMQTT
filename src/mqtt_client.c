@@ -110,6 +110,8 @@ static int MqttClient_CancelMessage(MqttClient *client, MqttObject* msg);
         return 0;
     }
 #elif defined(WOLFMQTT_POSIX_SEMAPHORES)
+    __thread void * lock_list[10];
+
     /* Posix style semaphore */
     int wm_SemInit(wm_Sem *s) {
     #ifndef WOLFMQTT_NO_COND_SIGNAL
@@ -126,7 +128,47 @@ static int MqttClient_CancelMessage(MqttClient *client, MqttObject* msg);
     #endif
         return 0;
     }
+
+    #include <execinfo.h>
+    #include <stdio.h>
+    #include <stdlib.h>
+
+    static void
+    print_trace(void)
+    {
+      void *array[10];
+      char **strings;
+      int size, i;
+
+      size = backtrace(array, 10);
+      strings = backtrace_symbols(array, size);
+      if (strings != NULL) {
+          printf ("Obtained %d stack frames.\n", size);
+          for (i = 0; i < size; i++) {
+              printf ("%s\n", strings[i]);
+          }
+      }
+
+      free(strings);
+    }
+
     int wm_SemLock(wm_Sem *s) {
+        for (size_t i = 0; i < 10; ++i) {
+            if (lock_list[i] == s) {
+                printf("error: double lock! %p\n", s);
+                print_trace();
+                abort();
+            }
+        }
+
+        for (size_t i = 0; i < 10; ++i) {
+            if (lock_list[i] == 0) {
+                lock_list[i] = s;
+                printf("info: set lock_list[%zu] = %p\n", i, s);
+                break;
+            }
+        }
+
         pthread_mutex_lock(&s->mutex);
     #ifndef WOLFMQTT_NO_COND_SIGNAL
         while (s->lockCount > 0)
@@ -137,6 +179,21 @@ static int MqttClient_CancelMessage(MqttClient *client, MqttObject* msg);
         return 0;
     }
     int wm_SemUnlock(wm_Sem *s) {
+        int found_lock = 0;
+        for (size_t i = 0; i < 10; ++i) {
+            if (lock_list[i] == s) {
+                found_lock = 1;
+                lock_list[i] = 0;
+                printf("info: unset lock_list[%zu] = %p\n", i, s);
+                break;
+            }
+        }
+
+        if (!found_lock) {
+            printf("error: double unlock! %p\n", s);
+            abort();
+        }
+
     #ifndef WOLFMQTT_NO_COND_SIGNAL
         pthread_mutex_lock(&s->mutex);
         if (s->lockCount > 0) {
