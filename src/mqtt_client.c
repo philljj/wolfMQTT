@@ -133,31 +133,31 @@ static int MqttClient_CancelMessage(MqttClient *client, MqttObject* msg);
     #include <stdio.h>
     #include <stdlib.h>
 
-    static void
-    print_trace(void)
-    {
-      void *array[10];
-      char **strings;
-      int size, i;
+    //static void
+    //print_trace(void)
+    //{
+    //  void *array[10];
+    //  char **strings;
+    //  int size, i;
 
-      size = backtrace(array, 10);
-      strings = backtrace_symbols(array, size);
-      if (strings != NULL) {
-          printf ("Obtained %d stack frames.\n", size);
-          for (i = 0; i < size; i++) {
-              printf ("%s\n", strings[i]);
-          }
-      }
+    //  size = backtrace(array, 10);
+    //  strings = backtrace_symbols(array, size);
+    //  if (strings != NULL) {
+    //      printf ("Obtained %d stack frames.\n", size);
+    //      for (i = 0; i < size; i++) {
+    //          printf ("%s\n", strings[i]);
+    //      }
+    //  }
 
-      free(strings);
-    }
+    //  free(strings);
+    //}
 
     int wm_SemLock(wm_Sem *s) {
         for (size_t i = 0; i < 10; ++i) {
             if (lock_list[i] == s) {
                 printf("error: double lock! %p\n", s);
-                print_trace();
-                abort();
+                //print_trace();
+                //abort();
             }
         }
 
@@ -191,7 +191,7 @@ static int MqttClient_CancelMessage(MqttClient *client, MqttObject* msg);
 
         if (!found_lock) {
             printf("error: double unlock! %p\n", s);
-            abort();
+            //abort();
         }
 
     #ifndef WOLFMQTT_NO_COND_SIGNAL
@@ -332,11 +332,14 @@ static int MqttReadStart(MqttClient* client, MqttMsgStat* stat)
 {
     int rc = MQTT_CODE_SUCCESS;
 
-#ifdef WOLFMQTT_DEBUG_CLIENT
+#if defined(WOLFMQTT_DEBUG_CLIENT) || !defined(WOLFMQTT_ALLOW_NODATA_UNLOCK)
+  #ifdef WOLFMQTT_DEBUG_CLIENT
     if (stat->isReadActive) {
         MQTT_TRACE_MSG("Warning, recv already locked!");
         rc = MQTT_CODE_ERROR_SYSTEM;
     }
+#endif /* WOLFMQTT_DEBUG_CLIENT */
+  #ifndef WOLFMQTT_ALLOW_NODATA_UNLOCK
     /* detect if a read is already in progress */
     #ifdef WOLFMQTT_MULTITHREAD
     if (wm_SemLock(&client->lockClient) == 0)
@@ -350,9 +353,11 @@ static int MqttReadStart(MqttClient* client, MqttMsgStat* stat)
         wm_SemUnlock(&client->lockClient);
     #endif
     }
-    if (rc != 0)
+  #endif /* WOLFMQTT_ALLOW_NODATA_UNLOCK */
+    if (rc != MQTT_CODE_SUCCESS) {
         return rc;
-#endif /* WOLFMQTT_DEBUG_CLIENT */
+    }
+#endif /* WOLFMQTT_DEBUG_CLIENT || !WOLFMQTT_ALLOW_NODATA_UNLOCK */
 
 #ifdef WOLFMQTT_MULTITHREAD
     rc = wm_SemLock(&client->lockRecv);

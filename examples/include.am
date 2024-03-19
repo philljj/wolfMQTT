@@ -18,6 +18,9 @@ noinst_PROGRAMS += examples/sn-client/sn-client \
                    examples/sn-client/sn-client_qos-1 \
                    examples/sn-client/sn-multithread
 endif
+if BUILD_STRESS
+noinst_PROGRAMS += examples/multirecv/multirecv
+endif
 
 noinst_HEADERS +=  examples/mqttclient/mqttclient.h \
                    examples/mqttsimple/mqttsimple.h \
@@ -36,6 +39,10 @@ noinst_HEADERS +=  examples/mqttclient/mqttclient.h \
 if BUILD_SN
 noinst_HEADERS +=  examples/sn-client/sn-client.h
 endif
+if BUILD_STRESS
+noinst_HEADERS += examples/multirecv/multirecv.h
+endif
+
 
 # MQTT Client Example
 examples_mqttclient_mqttclient_SOURCES      = examples/mqttclient/mqttclient.c \
@@ -136,6 +143,16 @@ examples_sn_client_sn_multithread_DEPENDENCIES  = src/libwolfmqtt.la
 examples_sn_client_sn_multithread_CPPFLAGS      = -I$(top_srcdir)/examples $(AM_CPPFLAGS)
 endif
 
+if BUILD_STRESS
+# multirecv Example
+examples_multirecv_multirecv_SOURCES      = examples/multirecv/multirecv.c \
+                                            examples/mqttnet.c \
+                                            examples/mqttexample.c
+examples_multirecv_multirecv_LDADD        = src/libwolfmqtt.la
+examples_multirecv_multirecv_DEPENDENCIES = src/libwolfmqtt.la
+examples_multirecv_multirecv_CPPFLAGS     = -I$(top_srcdir)/examples $(AM_CPPFLAGS)
+endif
+
 # MQTT pub and sub clients
 examples_pub_sub_mqtt_pub_SOURCES      = examples/pub-sub/mqtt-pub.c \
                                          examples/mqttnet.c \
@@ -172,6 +189,9 @@ dist_example_DATA+= examples/sn-client/sn-multithread.c
 endif
 dist_example_DATA+= examples/pub-sub/mqtt-pub.c
 dist_example_DATA+= examples/pub-sub/mqtt-sub.c
+if BUILD_STRESS
+dist_example_DATA+= examples/multirecv/multirecv.c
+endif
 
 DISTCLEANFILES+=   examples/mqttclient/.libs/mqttclient \
                    examples/firmware/.libs/fwpush \
@@ -187,6 +207,10 @@ if BUILD_SN
 DISTCLEANFILES+=   examples/sn-client/.libs/sn-client \
                    examples/sn-client/.libs/sn-client_qos-1 \
                    examples/sn-client/.libs/sn-multithread
+endif
+
+if BUILD_STRESS
+DISTCLEANFILES+=   examples/multirecv/.libs/multirecv
 endif
 
 EXTRA_DIST+=       examples/mqttuart.c \
