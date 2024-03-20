@@ -476,8 +476,8 @@ static int TestIsDone(int rc, MQTTCtx* mqttCtx)
     /* check if we are in test mode and done */
     if (wm_SemLock(&mtLock) == 0) {
         if ((rc == 0 || rc == MQTT_CODE_CONTINUE) && mqttCtx->test_mode &&
-                mNumMsgsDone == (NUM_PUB_TASKS * NUM_PUB_PER_TASK) &&
-                mNumMsgsRecvd == (NUM_PUB_TASKS * NUM_PUB_PER_TASK)
+                mNumMsgsDone == (2 * NUM_PUB_PER_TASK) &&
+                mNumMsgsRecvd == (2 * NUM_PUB_PER_TASK)
             #ifdef WOLFMQTT_NONBLOCK
                 && !MqttClient_IsMessageActive(&mqttCtx->client, NULL)
             #endif
@@ -731,7 +731,8 @@ static int unsubscribe_do(MQTTCtx *mqttCtx)
 int multirecv_test(MQTTCtx *mqttCtx)
 {
     int rc = 0, threadCount = 0;
-    THREAD_T threadList[NUM_PUB_TASKS+4];
+    int i = 0;
+    THREAD_T threadList[6];
 
     /* Build test message */
     rc = mqtt_fill_random_hexstr(mTestMessage, (word32)sizeof(mTestMessage));
@@ -745,6 +746,7 @@ int multirecv_test(MQTTCtx *mqttCtx)
             PRINTF("THREAD_CREATE failed: %d", errno);
             return -1;
         }
+
         /* for test mode, we must complete subscribe to track number of pubs received */
         if (mqttCtx->test_mode) {
             if (THREAD_JOIN(threadList, threadCount)) {
@@ -753,28 +755,33 @@ int multirecv_test(MQTTCtx *mqttCtx)
             }
             threadCount = 0;
         }
-        /* Create the thread that waits for messages */
-        if (THREAD_CREATE(&threadList[threadCount++], waitMessage_task, mqttCtx)) {
-            PRINTF("THREAD_CREATE failed: %d", errno);
-            return -1;
+
+        /* Create 2 threads to wait for messages */
+        for (i = 0; i < 2; ++i) {
+            if (THREAD_CREATE(&threadList[threadCount++], waitMessage_task,
+                              mqttCtx)) {
+                PRINTF("THREAD_CREATE failed: %d", errno);
+                return -1;
+            }
         }
-        if (THREAD_CREATE(&threadList[threadCount++], waitMessage_task, mqttCtx)) {
-            PRINTF("THREAD_CREATE failed: %d", errno);
-            return -1;
-        }
+
         /* Ping */
+        if (0) {
         if (THREAD_CREATE(&threadList[threadCount++], ping_task, mqttCtx)) {
             PRINTF("THREAD_CREATE failed: %d", errno);
             return -1;
         }
+        }
 
-        /* Create threads that publish unique messages */
-        //for (i = 0; i < NUM_PUB_TASKS; i++) {
-            if (THREAD_CREATE(&threadList[threadCount++], publish_task, mqttCtx)) {
+        /* Create 2 threads that publish unique messages */
+
+        for (i = 0; i < 2; ++i) {
+            if (THREAD_CREATE(&threadList[threadCount++], publish_task,
+                              mqttCtx)) {
                 PRINTF("THREAD_CREATE failed: %d", errno);
                 return -1;
             }
-        //}
+        }
 
         /* Join threads - wait for completion */
         if (THREAD_JOIN(threadList, threadCount)) {

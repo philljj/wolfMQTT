@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# MQTT Stress Client test
+# MQTT Multirecv Client test
 
-name="Stress Client"
+name="Multirecv Client"
 prog="examples/multirecv/multirecv"
 timeout_ms=250
 no_pid=-1
@@ -52,6 +52,7 @@ cacert_args="-A scripts/broker_test/ca-cert.pem"
 
 echo -e "Base args: $def_args $port_args"
 
+#only interested in testing TLS with QoS 1 right now.
 # Run without TLS and QoS 0-2
 #./$prog $def_args $port_args -q 0
 #RESULT=$?
@@ -84,6 +85,6 @@ fi
 # End broker
 do_cleanup "0"
 
-echo -e "\n\nStress MQTT Client Tests Passed"
+echo -e "\n\nMultirecv MQTT Client Tests Passed"
 
 exit 0
