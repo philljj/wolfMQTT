@@ -52,7 +52,10 @@ cacert_args="-A scripts/broker_test/ca-cert.pem"
 
 echo -e "Base args: $def_args $port_args"
 
-#only interested in testing TLS with QoS 1 right now.
+# Only interested in testing TLS with QoS 1 right now.
+# This script is only meant to aid debugging thread errors,
+# not be a CI test.
+#
 # Run without TLS and QoS 0-2
 #./$prog $def_args $port_args -q 0
 #RESULT=$?
